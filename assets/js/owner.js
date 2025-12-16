@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup form handlers
     setupAddUserForm();
     setupRentGeneration();
+    setupDeleteUserModal();
 });
 
 /**
@@ -97,6 +98,208 @@ function setupRentGeneration() {
         
         await generateRentForAllUsers(month, amount);
     });
+}
+
+/**
+ * Setup delete user modal event listeners
+ */
+function setupDeleteUserModal() {
+    const modal = document.getElementById('deleteUserModal');
+    const closeBtn = document.getElementById('closeDeleteModal');
+    const cancelBtn = document.getElementById('cancelDeleteBtn');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    
+    if (!modal) return;
+    
+    // Close modal on close button
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+    }
+    
+    // Close modal on cancel button
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+    }
+    
+    // Delete user on confirm button
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', deleteUserConfirmed);
+    }
+    
+    // Close modal when clicking outside (on background)
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+}
+
+/**
+ * Show delete user modal with rent and deposit information
+ */
+window.showDeleteUserModal = async function(userId, userName, userEmail, userDeposit) {
+    const modal = document.getElementById('deleteUserModal');
+    const contentDiv = document.getElementById('deleteUserContent');
+    
+    try {
+        // Fetch all rents for this user
+        const { data: userRents, error: rentsError } = await supabaseClient
+            .from('rents')
+            .select('*')
+            .eq('email', userEmail);
+        
+        if (rentsError) {
+            alert('Error fetching rent information: ' + rentsError.message);
+            return;
+        }
+        
+        // Check if all rents are paid
+        const unpaidRents = userRents ? userRents.filter(rent => rent.status !== 'paid') : [];
+        const allRentsPaid = unpaidRents.length === 0;
+        
+        // Build content for modal
+        let content = `
+            <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h4 class="text-lg font-semibold text-gray-800 mb-3">User Information</h4>
+                <p class="text-sm text-gray-700 mb-2"><strong>Name:</strong> ${userName}</p>
+                <p class="text-sm text-gray-700 mb-4"><strong>Email:</strong> ${userEmail}</p>
+                
+                <h4 class="text-lg font-semibold text-gray-800 mb-3">Deposit Status</h4>
+                <p class="text-sm text-gray-700 mb-4"><strong>Deposit to Return:</strong> <span class="text-green-600 font-semibold">${formatCurrency(parseFloat(userDeposit))}</span></p>
+                
+                <h4 class="text-lg font-semibold text-gray-800 mb-3">Rent Payment Status</h4>
+        `;
+        
+        if (!userRents || userRents.length === 0) {
+            content += `<p class="text-sm text-gray-700">No rent records found.</p>`;
+        } else {
+            content += `<div class="space-y-2">`;
+            userRents.forEach(rent => {
+                const statusClass = rent.status === 'paid' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-yellow-100 text-yellow-800';
+                content += `
+                    <div class="flex justify-between items-center text-sm">
+                        <span>${rent.month}</span>
+                        <span class="px-2 py-1 rounded text-xs font-medium ${statusClass}">${rent.status}</span>
+                    </div>
+                `;
+            });
+            content += `</div>`;
+        }
+        
+        // Add warning or confirmation message
+        if (allRentsPaid) {
+            content += `
+                <div class="mt-4 p-3 bg-green-100 border border-green-400 rounded text-green-800 text-sm">
+                    ✓ All rents are paid. You can proceed with deletion.
+                </div>
+            `;
+        } else {
+            content += `
+                <div class="mt-4 p-3 bg-red-100 border border-red-400 rounded text-red-800 text-sm">
+                    ✗ This user has ${unpaidRents.length} unpaid rent(s). Please collect payment before deletion.
+                </div>
+            `;
+        }
+        
+        content += `</div>`;
+        
+        contentDiv.innerHTML = content;
+        
+        // Store user data in modal for later use
+        modal.dataset.userId = userId;
+        modal.dataset.userEmail = userEmail;
+        modal.dataset.allRentsPaid = allRentsPaid;
+        
+        // Show/hide delete button based on rent status
+        const deleteBtn = document.getElementById('confirmDeleteBtn');
+        if (allRentsPaid) {
+            deleteBtn.disabled = false;
+            deleteBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            deleteBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+        } else {
+            deleteBtn.disabled = true;
+            deleteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            deleteBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        }
+        
+        // Show modal
+        modal.classList.remove('hidden');
+        
+    } catch (err) {
+        console.error('Error showing delete modal:', err);
+        alert('An error occurred while fetching user information');
+    }
+};
+
+/**
+ * Delete user and all related data
+ */
+async function deleteUserConfirmed() {
+    const modal = document.getElementById('deleteUserModal');
+    const userId = modal.dataset.userId;
+    const userEmail = modal.dataset.userEmail;
+    const allRentsPaid = modal.dataset.allRentsPaid === 'true';
+    
+    if (!allRentsPaid) {
+        alert('Cannot delete user with unpaid rents');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        // Delete all rents for this user
+        const { error: deleteRentsError } = await supabaseClient
+            .from('rents')
+            .delete()
+            .eq('email', userEmail);
+        
+        if (deleteRentsError) {
+            alert('Error deleting rents: ' + deleteRentsError.message);
+            return;
+        }
+        
+        // Delete all maintenance requests for this user
+        const { error: deleteMaintenanceError } = await supabaseClient
+            .from('maintenance')
+            .delete()
+            .eq('email', userEmail);
+        
+        if (deleteMaintenanceError) {
+            alert('Error deleting maintenance requests: ' + deleteMaintenanceError.message);
+            return;
+        }
+        
+        // Delete the user
+        const { error: deleteUserError } = await supabaseClient
+            .from('users')
+            .delete()
+            .eq('id', userId);
+        
+        if (deleteUserError) {
+            alert('Error deleting user: ' + deleteUserError.message);
+            return;
+        }
+        
+        alert('User deleted successfully!');
+        modal.classList.add('hidden');
+        await loadUsers();
+        await loadRents();
+        await loadMaintenance();
+        await populateRoomDropdown();
+        
+    } catch (err) {
+        console.error('Error deleting user:', err);
+        alert('An error occurred while deleting user');
+    }
 }
 
 /**
@@ -177,12 +380,12 @@ export async function loadUsers() {
             .order('created_at', { ascending: false });
         
         if (error) {
-            usersTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading users</td></tr>';
+            usersTableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-red-500">Error loading users</td></tr>';
             return;
         }
         
         if (!data || data.length === 0) {
-            usersTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No users found</td></tr>';
+            usersTableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">No users found</td></tr>';
             return;
         }
         
@@ -193,11 +396,19 @@ export async function loadUsers() {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.contact_no || 'N/A'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.email || 'N/A'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatCurrency(user.deposit)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <button 
+                        onclick="showDeleteUserModal('${user.id}', '${user.name}', '${user.email}', '${user.deposit}')"
+                        class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition duration-200 text-xs"
+                    >
+                        Delete
+                    </button>
+                </td>
             </tr>
         `).join('');
     } catch (err) {
         console.error('Load users error:', err);
-        usersTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading users</td></tr>';
+        usersTableBody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-red-500">Error loading users</td></tr>';
     }
 }
 
