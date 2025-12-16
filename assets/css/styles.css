@@ -29,3 +29,12 @@ body {
     background: #555;
 }
 
+/* Payment Modal Styles */
+#paymentModal {
+    display: none;
+}
+
+#paymentModal.flex {
+    display: flex;
+}
+

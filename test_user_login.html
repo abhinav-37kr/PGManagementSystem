@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test User Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow">
+        <h1 class="text-2xl font-bold mb-4">User Login Test</h1>
+        
+        <div class="mb-4">
+            <label class="block mb-2">Email:</label>
+            <input type="email" id="testEmail" class="border p-2 w-full rounded" placeholder="user@example.com">
+        </div>
+        
+        <div class="mb-4">
+            <label class="block mb-2">Password:</label>
+            <input type="password" id="testPassword" class="border p-2 w-full rounded" placeholder="password">
+        </div>
+        
+        <button onclick="testLogin()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            Test Login
+        </button>
+        
+        <div id="results" class="mt-4 p-4 bg-gray-50 rounded"></div>
+    </div>
+    
+    <script type="module">
+        const SUPABASE_URL = "https://guzfqaeiyyswgizlkumu.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1emZxYWVpeXlzd2dpemxrdW11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NTUwODgsImV4cCI6MjA4MTQzMTA4OH0.zwHp0VXzxmisdpPSIWKPztM1kj2KVzAtAH9jBSWmAzY";
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        window.testLogin = async function() {
+            const email = document.getElementById('testEmail').value.trim();
+            const password = document.getElementById('testPassword').value;
+            const resultsDiv = document.getElementById('results');
+            
+            resultsDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Test 1: Try to fetch all users
+                resultsDiv.innerHTML += '<p><strong>Test 1:</strong> Fetching all users...</p>';
+                const { data: allUsers, error: allError } = await supabaseClient
+                    .from('users')
+                    .select('*');
+                
+                if (allError) {
+                    resultsDiv.innerHTML += `<p class="text-red-600">Error fetching all users: ${allError.message} (Code: ${allError.code})</p>`;
+                } else {
+                    resultsDiv.innerHTML += `<p class="text-green-600">Success! Found ${allUsers?.length || 0} users</p>`;
+                    if (allUsers && allUsers.length > 0) {
+                        resultsDiv.innerHTML += `<p>Sample user emails: ${allUsers.slice(0, 3).map(u => u.email).join(', ')}</p>`;
+                    }
+                }
+                
+                // Test 2: Try to fetch user by email
+                if (email) {
+                    resultsDiv.innerHTML += `<p><strong>Test 2:</strong> Fetching user with email: ${email}</p>`;
+                    const { data: userData, error: userError } = await supabaseClient
+                        .from('users')
+                        .select('*')
+                        .eq('email', email)
+                        .single();
+                    
+                    if (userError) {
+                        resultsDiv.innerHTML += `<p class="text-red-600">Error fetching user: ${userError.message} (Code: ${userError.code})</p>`;
+                    } else if (userData) {
+                        resultsDiv.innerHTML += `<p class="text-green-600">User found!</p>`;
+                        resultsDiv.innerHTML += `<p>Name: ${userData.name}</p>`;
+                        resultsDiv.innerHTML += `<p>Email: ${userData.email}</p>`;
+                        resultsDiv.innerHTML += `<p>Room: ${userData.room}</p>`;
+                        resultsDiv.innerHTML += `<p>Password in DB: ${userData.password ? '***' + userData.password.slice(-2) : 'NULL'}</p>`;
+                        
+                        // Test 3: Compare password
+                        if (password) {
+                            const storedPassword = (userData.password || '').toString().trim();
+                            const enteredPassword = password.trim();
+                            resultsDiv.innerHTML += `<p><strong>Test 3:</strong> Password comparison</p>`;
+                            resultsDiv.innerHTML += `<p>Stored password length: ${storedPassword.length}</p>`;
+                            resultsDiv.innerHTML += `<p>Entered password length: ${enteredPassword.length}</p>`;
+                            resultsDiv.innerHTML += `<p>Passwords match: ${storedPassword === enteredPassword ? 'YES ✓' : 'NO ✗'}</p>`;
+                            
+                            if (storedPassword === enteredPassword) {
+                                resultsDiv.innerHTML += `<p class="text-green-600 font-bold">Login should work!</p>`;
+                            } else {
+                                resultsDiv.innerHTML += `<p class="text-red-600 font-bold">Password mismatch!</p>`;
+                            }
+                        }
+                    } else {
+                        resultsDiv.innerHTML += `<p class="text-yellow-600">No user found with that email</p>`;
+                    }
+                }
+                
+            } catch (err) {
+                resultsDiv.innerHTML += `<p class="text-red-600">Exception: ${err.message}</p>`;
+                console.error('Test error:', err);
+            }
+        };
+    </script>
+</body>
+</html>
+

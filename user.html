@@ -30,7 +30,10 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Pending Rent Section -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Pending Rent</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Pending Rent</h2>
+                <div id="totalPendingAmount" class="text-lg font-semibold text-red-600"></div>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -38,11 +41,12 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                         </tr>
                     </thead>
                     <tbody id="pendingRentsTableBody" class="bg-white divide-y divide-gray-200">
                         <tr>
-                            <td colspan="3" class="px-6 py-4 text-center text-gray-500">Loading pending rents...</td>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500">Loading pending rents...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -96,6 +100,56 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Pay Rent</h3>
+                <button id="closePaymentModal" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-2">Month: <span id="paymentMonth" class="font-semibold"></span></p>
+                <p class="text-sm text-gray-600 mb-4">Amount: <span id="paymentAmount" class="font-semibold"></span></p>
+            </div>
+            <form id="paymentForm">
+                <div class="mb-4">
+                    <label for="upiId" class="block text-sm font-medium text-gray-700 mb-1">Enter UPI ID</label>
+                    <input 
+                        type="text" 
+                        id="upiId" 
+                        name="upiId" 
+                        required
+                        placeholder="yourname@upi"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                        autofocus
+                    >
+                    <p class="text-xs text-gray-500 mt-1">Example: yourname@paytm, yourname@phonepe</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button 
+                        type="button"
+                        id="cancelPaymentBtn"
+                        class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-200 font-medium"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit"
+                        class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 font-medium"
+                    >
+                        Pay Now
+                    </button>
+                </div>
+            </form>
+            <div id="paymentMessage" class="mt-4"></div>
         </div>
     </div>
 

@@ -202,7 +202,7 @@ export async function loadUsers() {
 }
 
 /**
- * Generate rent for all current users
+ * Generate rent for all current users (excluding those who already have rent for the month)
  */
 export async function generateRentForAllUsers(month, amount) {
     const rentMessage = document.getElementById('rentMessage');
@@ -218,8 +218,40 @@ export async function generateRentForAllUsers(month, amount) {
             return;
         }
         
-        // Create rent entries for all users
-        const rentEntries = users.map(user => ({
+        // Fetch existing rents for the given month
+        const { data: existingRents, error: rentsError } = await supabaseClient
+            .from('rents')
+            .select('email')
+            .eq('month', month);
+        
+        if (rentsError) {
+            showMessage(rentMessage, 'error', 'Error checking existing rents: ' + rentsError.message);
+            return;
+        }
+        
+        // Create a set of emails that already have rent for this month
+        const existingEmails = new Set();
+        if (existingRents) {
+            existingRents.forEach(rent => {
+                if (rent.email) {
+                    existingEmails.add(rent.email.toLowerCase());
+                }
+            });
+        }
+        
+        // Filter users to only include those who don't have rent for this month
+        const usersWithoutRent = users.filter(user => {
+            if (!user.email) return false;
+            return !existingEmails.has(user.email.toLowerCase());
+        });
+        
+        if (usersWithoutRent.length === 0) {
+            showMessage(rentMessage, 'error', `All users already have rent generated for ${month}`);
+            return;
+        }
+        
+        // Create rent entries only for users without existing rent
+        const rentEntries = usersWithoutRent.map(user => ({
             name: user.name,
             email: user.email,
             month: month,
@@ -237,7 +269,14 @@ export async function generateRentForAllUsers(month, amount) {
             return;
         }
         
-        showMessage(rentMessage, 'success', `Rent generated successfully for ${data.length} users!`);
+        // Show success message with details
+        const skippedCount = users.length - usersWithoutRent.length;
+        let message = `Rent generated successfully for ${data.length} user(s)!`;
+        if (skippedCount > 0) {
+            message += ` (${skippedCount} user(s) already have rent for ${month})`;
+        }
+        
+        showMessage(rentMessage, 'success', message);
         document.getElementById('rentMonth').value = '';
         document.getElementById('rentAmount').value = '';
         await loadRents(); // Refresh rents list
