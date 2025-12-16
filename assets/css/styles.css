@@ -1,0 +1,31 @@
+/* Custom styles for PG Management System */
+
+/* Additional custom styles if needed */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Smooth transitions */
+* {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Custom scrollbar for tables */
+.overflow-x-auto::-webkit-scrollbar {
+    height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
